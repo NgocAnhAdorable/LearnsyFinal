@@ -75,51 +75,82 @@ object NetworkUtils {
     suspend fun acquireActiveWifiNetwork(context: Context): WifiNetworkHandle =
         kotlinx.coroutines.suspendCancellableCoroutine { cont ->
             val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            // Chấp nhận Wi-Fi HOẶC Ethernet (đúng như tên hàm/comment mô tả). LƯU Ý: gọi
+            // addTransportType() nhiều lần trên CÙNG 1 Builder là điều kiện AND (network phải
+            // có ĐỦ cả 2 transport cùng lúc — gần như không network nào thoả), không phải OR
+            // như nhiều người lầm tưởng. Vì vậy chỉ request TRANSPORT_WIFI ở tầng OS (giữ đúng
+            // hành vi cũ, tránh vô tình match nhầm network di động), sau đó chấp nhận thêm
+            // Ethernet bằng cách kiểm tra capabilities ngay trong onAvailable() bên dưới —
+            // đây là cách chính xác để có ngữ nghĩa OR giữa 2 transport với NetworkRequest.
             val request = android.net.NetworkRequest.Builder()
                 .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build()
+            val ethernetRequest = android.net.NetworkRequest.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_ETHERNET)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build()
 
             var resumed = false
-            val callback = object : ConnectivityManager.NetworkCallback() {
+            lateinit var wifiCallbackRef: ConnectivityManager.NetworkCallback
+            lateinit var ethernetCallbackRef: ConnectivityManager.NetworkCallback
+            // Gỡ CẢ 2 callback (wifi lẫn ethernet) khi cleanup, dù chỉ 1 trong 2 network xuất
+            // hiện — tránh treo NetworkCallback rác của request còn lại. Đây là fix cho bug
+            // thứ 2: bản trước chỉ đăng ký/gỡ 1 callback duy nhất, nhưng vì WifiNetworkHandle
+            // mới GHI ĐÈ field wifiNetworkHandle ở FtpClientManager mỗi lần connect() được gọi
+            // lại (vd người dùng bấm "Kết nối lại" sau khi thất bại), handle CŨ (nếu đã
+            // resume rồi bằng onUnavailable/exception, tức network null) không hề được
+            // release() trước khi bị ghi đè -> callback đó vẫn nằm trong ConnectivityManager
+            // vĩnh viễn. Qua vài lần thử kết nối lại, số callback rác tích luỹ khiến hệ điều
+            // hành bắt đầu định tuyến/ưu tiên network sai cho các request mới -> đúng triệu
+            // chứng "lúc kết nối được lúc không, không liên quan sóng hay khoảng cách router".
+            fun unregisterBoth() {
+                try { cm.unregisterNetworkCallback(wifiCallbackRef) } catch (e: Exception) { /* đã gỡ */ }
+                try { cm.unregisterNetworkCallback(ethernetCallbackRef) } catch (e: Exception) { /* đã gỡ */ }
+            }
+
+            wifiCallbackRef = object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: android.net.Network) {
                     if (resumed) return
                     resumed = true
                     // KHÔNG unregister ở đây — callback phải sống tới khi FTP disconnect()
                     // gọi release(), giữ network ở mức ưu tiên cao suốt phiên làm việc.
-                    cont.resume(
-                        WifiNetworkHandle(network) {
-                            try {
-                                cm.unregisterNetworkCallback(this)
-                            } catch (e: Exception) {
-                                // Đã unregister rồi (vd gọi release() 2 lần) — bỏ qua an toàn.
-                            }
-                        }
-                    ) {}
+                    cont.resume(WifiNetworkHandle(network) { unregisterBoth() }) {}
                 }
-
-                override fun onUnavailable() {
+            }
+            ethernetCallbackRef = object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: android.net.Network) {
                     if (resumed) return
                     resumed = true
-                    cont.resume(WifiNetworkHandle(null) {}) {}
+                    cont.resume(WifiNetworkHandle(network) { unregisterBoth() }) {}
                 }
             }
 
-            cont.invokeOnCancellation {
-                try {
-                    cm.unregisterNetworkCallback(callback)
-                } catch (e: Exception) {
-                    // Request có thể chưa từng thành công đăng ký — bỏ qua an toàn.
-                }
-            }
+            cont.invokeOnCancellation { unregisterBoth() }
 
             try {
-                cm.requestNetwork(request, callback, 4000)
+                cm.requestNetwork(request, wifiCallbackRef)
+                cm.requestNetwork(ethernetRequest, ethernetCallbackRef)
             } catch (e: Exception) {
                 if (!resumed) {
                     resumed = true
+                    unregisterBoth()
                     cont.resume(WifiNetworkHandle(null) {}) {}
                 }
+                return@suspendCancellableCoroutine
             }
+
+            // Timeout thủ công 4s: requestNetwork(request, callback) KHÔNG có overload nhận
+            // timeout khi dùng 2 request song song (overload timeout chỉ nhận 1 callback), nên
+            // tự đặt hẹn giờ — nếu chưa network nào sẵn sàng sau 4s, coi như thất bại và gỡ cả
+            // 2 callback để không treo request vô thời hạn (khác bug đã sửa ở trên: ở đây có
+            // timeout rõ ràng nên không tích luỹ callback rác qua các lần gọi).
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                if (!resumed) {
+                    resumed = true
+                    unregisterBoth()
+                    cont.resume(WifiNetworkHandle(null) {}) {}
+                }
+            }, 4000)
         }
 }
