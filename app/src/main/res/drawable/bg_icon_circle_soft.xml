@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Khung tròn nền nhạt, KHÔNG viền — dùng làm nền icon ở item_storage_action.xml
+     (4 dòng Thùng rác/Ứng dụng không dùng/File trùng lặp/File lớn) để icon có
+     "trọng lượng" thị giác cân với khối tiêu đề+mô tả bên cạnh, đồng thời mềm mại
+     hơn so với bg_icon_circle.xml (có viền, dùng cho chỗ khác cần nhấn viền rõ). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="@color/surface_alt" />
+</shape>

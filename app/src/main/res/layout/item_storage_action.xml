@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingVertical="14dp"
+    android:background="?attr/selectableItemBackground">
+
+    <!-- ĐÃ SỬA: bọc icon trong khung tròn nền nhạt (giống dot_color của item_storage_category
+         nhưng lớn hơn, phù hợp icon) để cột icon có "trọng lượng" thị giác cân với cột chữ bên
+         cạnh — trước đây icon 24dp trơ trọi nhìn nhỏ/lệch so với khối tiêu đề+mô tả 2 dòng. -->
+    <FrameLayout
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@drawable/bg_icon_circle_soft">
+
+        <ImageView
+            android:id="@+id/iv_action_icon"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="center"
+            android:contentDescription="@null"
+            tools:src="@drawable/ic_trash" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="14dp"
+        android:layout_marginEnd="8dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_action_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            tools:text="Thùng rác" />
+
+        <!-- ĐÃ SỬA: giới hạn 1 dòng + ellipsize — mô tả dài (vd dòng Thùng rác trong ảnh gốc
+             bị vỡ xuống 2 dòng, đẩy lệch chiều cao so với các dòng mô tả ngắn 1 dòng khác,
+             khiến cả danh sách nhìn không đều hàng). -->
+        <TextView
+            android:id="@+id/tv_action_desc"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="12.5sp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            tools:text="Các file nằm trong Thùng rác trong các ứng dụng khác nhau" />
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_action_size"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minWidth="60dp"
+        android:gravity="end"
+        android:textColor="@color/text_primary"
+        android:textSize="14.5sp"
+        android:textStyle="bold"
+        tools:text="224 MB" />
+
+    <!-- ĐÃ THÊM: đồng bộ tín hiệu "có thể bấm vào" với các dòng category phía trên (vốn đã
+         có chevron) — trước đây 4 dòng này bấm được nhưng không có gợi ý thị giác nào. -->
+    <ImageView
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_marginStart="4dp"
+        android:src="@drawable/ic_chevron_right"
+        android:alpha="0.5"
+        android:contentDescription="@null" />
+
+</LinearLayout>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+Popup menu tùy chỉnh cho từng file/thư mục (thay cho android.widget.PopupMenu hệ thống):
+lý do cần layout riêng là PopupMenu hệ thống KHÔNG bo góc và KHÔNG cuộn được khi danh sách
+dài hơn màn hình (như trường hợp bấm vào 1 thư mục có đủ Chia sẻ/Nén/Đổi tên/Sao chép/Di
+chuyển/Ghim/Ẩn/Xoá... - dài hơn màn hình thì các mục cuối bị cắt mất, không bấm được).
+ScrollView cho cuộn, root bo góc bằng bg_popup_menu (giống các popup khác trong app).
+-->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/scroll_file_menu"
+    android:layout_width="240dp"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_popup_menu"
+    android:clipToOutline="true"
+    android:elevation="8dp"
+    android:scrollbars="vertical">
+
+    <LinearLayout
+        android:id="@+id/container_file_menu_items"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingVertical="4dp" />
+
+</ScrollView>

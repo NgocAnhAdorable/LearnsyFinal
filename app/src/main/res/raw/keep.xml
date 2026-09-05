@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ── keep.xml ──
+  Android's resource shrinker (isShrinkResources = true trong bản release,
+  xem app/build.gradle.kts) phân tích tĩnh code để tìm resource nào đang
+  được dùng — nhưng 27 ảnh mascot_girl_XX chỉ được tham chiếu GIÁN TIẾP qua
+  hằng số trong object MascotPose (ui/dashboard/TabHome.kt) và mảng
+  MASCOT_DRAWABLES (RandomMascotLayer.kt), không gọi painterResource() với
+  R.drawable.mascot_girl_XX trực tiếp tại chỗ dùng — shrinker có thể không
+  theo dõi được liên kết gián tiếp này và loại bỏ nhầm ảnh khỏi APK release,
+  gây crash Resources$NotFoundException (Resource ID #0x0) lúc runtime dù
+  code biên dịch bình thường (vì R.drawable.* vẫn là hằng số hợp lệ ở
+  compile-time, chỉ mất đi ở bước đóng gói resource).
+
+  Dùng wildcard @drawable/mascot_girl_* để giữ toàn bộ bộ mascot
+  (đã bỏ mascot_girl_15 theo yêu cầu).
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/mascot_girl_*" />

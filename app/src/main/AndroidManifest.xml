@@ -1,0 +1,389 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ═══ Mạng ═══ -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!-- Bắt buộc để nhận gói tin phản hồi SSDP multicast khi dò TV/loa DLNA trong LAN
+         (module Quản lý tệp) -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+
+    <!-- Camera: quét mã QR để kết nối FTP/SFTP/SMB nhanh (module Quản lý tệp) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+
+    <!-- ═══ Lưu trữ ═══ -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <!-- Cần cho nút "Tải về" (DownloadManager → DIRECTORY_DOWNLOADS) trên
+         Android 9 (API 28) trở xuống; từ Android 10 trở lên scoped storage
+         không cần quyền này để ghi vào thư mục Downloads công khai. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+
+    <!-- ═══ Foreground service để FTP server / media cast / DLNA chạy nền ổn định
+         (module Quản lý tệp) ═══ -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Cần để hiện hộp thoại xin OneUI (Samsung)/HyperOS (Xiaomi) miễn trừ khỏi trình quản lý
+         pin — cả 2 hệ thống đều có cơ chế "Tối ưu hoá pin" RIÊNG, mạnh tay hơn nhiều so với
+         Android gốc (AOSP), tự động kill các service nền (kể cả foreground service đã khai
+         đúng foregroundServiceType) sau vài phút nếu app không nằm trong danh sách miễn trừ —
+         đây là nguyên nhân phổ biến khiến máy chủ FTP/SFTP/Media Cast tự dừng giữa chừng trên 2
+         hãng này dù hoạt động ổn định trên Android gốc/Pixel. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <!-- ═══ Quản lý lưu trữ: "Ứng dụng không dùng" cần đọc usage stats, gỡ cài đặt qua Intent
+         chuẩn (module Quản lý tệp) ═══ -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
+
+    <application
+        android:name=".LearnsyApp"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.Learnsy"
+        android:supportsRtl="true"
+        android:largeHeap="true"
+        android:hardwareAccelerated="true"
+        android:networkSecurityConfig="@xml/network_security_config"
+        tools:targetApi="34">
+
+        <!-- ═══ Learnsy Pro — điểm vào chính (duy nhất trong toàn app) ═══ -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Learnsy">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- ═══ Module Admin — trước đây là app Learnsy Standard Admin độc lập
+             (package com.learnsy.admin), gộp vào Learnsy Pro để dùng chung 1 mã
+             nguồn/1 APK, cùng mô hình với module Quản lý tệp bên dưới. Mở từ
+             Dashboard (Intent nội bộ), KHÔNG có icon/launcher riêng — vì vậy
+             KHÔNG mang intent-filter MAIN/LAUNCHER, exported=false. Theme dùng
+             chung Theme.Learnsy vì AppRoot() của Admin tự vẽ MaterialTheme +
+             LearnsyColors riêng bên trong (xem AdminActivity.kt), không phụ
+             thuộc theme XML ngoài như module Quản lý tệp (Theme.MyFile). ═══ -->
+        <activity
+            android:name=".admin.AdminActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.Learnsy" />
+
+        <!-- ═══ Module Quản lý tệp (FTP/SFTP/SMB/Cloud) — trước đây là app MyFile Manager
+             độc lập, gộp vào Learnsy Pro để dùng chung 1 mã nguồn/1 APK. Mở từ icon "Tệp tin"
+             ở header Dashboard (xem DashboardScreen.kt + LearnsyNavHost.kt), KHÔNG còn là
+             app/icon riêng trên màn hình chính — vì vậy HomeActivity KHÔNG mang intent-filter
+             MAIN/LAUNCHER nữa (đã gỡ so với bản gốc, exported đổi thành false). ═══ -->
+
+        <activity
+            android:name=".filemanager.HomeActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.MyFile" />
+
+        <!-- uCrop: màn hình crop ảnh tương tác (pan/zoom) cho avatar/ảnh bìa. android:exported
+             mặc định false từ API 31+ đã đủ (không ai gọi Activity này từ ngoài app), không cần
+             khai báo lại — chỉ cần đúng theme để không vỡ layout. -->
+        <activity
+            android:name="com.yalantis.ucrop.UCropActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.Learnsy" />
+
+        <!-- Màn khoá app (PIN + sinh trắc học): excludeFromRecents để không lộ giao diện nhập
+             PIN trong app switcher/recent apps; launchMode singleTask để tránh xếp chồng nhiều
+             instance nếu người dùng bấm mở app liên tục lúc đang bị khoá. -->
+        <activity
+            android:name=".filemanager.AppLockActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.MyFile" />
+
+        <activity
+            android:name=".filemanager.MainActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.MyFile" />
+
+        <activity
+            android:name=".filemanager.FtpConnectionActivity"
+            android:exported="false"
+            android:label="@string/title_ftp_client"
+            android:theme="@style/Theme.MyFile" />
+
+        <activity
+            android:name=".filemanager.FileBrowserActivity"
+            android:exported="false"
+            android:label="@string/title_file_browser"
+            android:theme="@style/Theme.MyFile" />
+
+        <activity
+            android:name=".filemanager.CategoryFilesActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MyFile" />
+
+        <activity
+            android:name=".filemanager.NotesListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MyFile" />
+
+        <activity
+            android:name=".filemanager.NoteEditorActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.MyFile" />
+
+        <activity
+            android:name=".filemanager.FolderPickerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MyFile" />
+
+        <activity
+            android:name=".filemanager.ArchivePreviewActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MyFile" />
+
+        <activity
+            android:name=".filemanager.MediaViewerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MyFile.MediaViewer" />
+
+        <activity
+            android:name=".filemanager.CastToTvActivity"
+            android:exported="false"
+            android:label="@string/title_cast_to_tv"
+            android:theme="@style/Theme.MyFile" />
+
+        <activity
+            android:name=".filemanager.RemoteServersActivity"
+            android:exported="false"
+            android:label="@string/title_remote_servers"
+            android:theme="@style/Theme.MyFile" />
+
+        <activity
+            android:name=".filemanager.AudioPlayerActivity"
+            android:exported="false"
+            android:label="@string/title_audio_player"
+            android:theme="@style/Theme.MyFile" />
+
+        <activity
+            android:name=".filemanager.TrashActivity"
+            android:exported="false"
+            android:label="@string/title_trash"
+            android:theme="@style/Theme.MyFile" />
+
+        <activity
+            android:name=".filemanager.SearchActivity"
+            android:exported="false"
+            android:label="@string/title_search"
+            android:theme="@style/Theme.MyFile" />
+
+        <activity
+            android:name=".filemanager.StorageManagerActivity"
+            android:exported="false"
+            android:label="@string/title_storage_manager"
+            android:theme="@style/Theme.MyFile" />
+
+        <activity
+            android:name=".filemanager.DuplicateFilesActivity"
+            android:exported="false"
+            android:label="@string/storage_action_duplicate"
+            android:theme="@style/Theme.MyFile" />
+
+        <activity
+            android:name=".filemanager.UnusedAppsActivity"
+            android:exported="false"
+            android:label="@string/storage_action_unused_apps"
+            android:theme="@style/Theme.MyFile" />
+
+        <activity
+            android:name=".filemanager.LargeFilesActivity"
+            android:exported="false"
+            android:label="@string/storage_action_large"
+            android:theme="@style/Theme.MyFile" />
+
+        <activity
+            android:name=".filemanager.CloudBrowserActivity"
+            android:exported="false"
+            android:label="@string/title_cloud_browser"
+            android:theme="@style/Theme.MyFile" />
+
+        <activity
+            android:name=".filemanager.LogActivity"
+            android:exported="false"
+            android:label="@string/title_logs"
+            android:theme="@style/Theme.MyFile" />
+
+        <activity
+            android:name=".filemanager.QrScannerActivity"
+            android:exported="false"
+            android:label="@string/title_qr_scanner"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.MyFile" />
+
+        <activity
+            android:name=".filemanager.HtmlViewerActivity"
+            android:exported="true"
+            android:label="@string/title_html_viewer"
+            android:theme="@style/Theme.MyFile">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" android:mimeType="text/html" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="file" android:mimeType="text/html" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".filemanager.PdfViewerActivity"
+            android:exported="true"
+            android:label="@string/title_pdf_viewer"
+            android:theme="@style/Theme.MyFile">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" android:mimeType="application/pdf" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="file" android:mimeType="application/pdf" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".filemanager.DocxViewerActivity"
+            android:exported="true"
+            android:label="@string/title_docx_viewer"
+            android:theme="@style/Theme.MyFile">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" android:mimeType="application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="file" android:mimeType="application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".filemanager.XlsxViewerActivity"
+            android:exported="true"
+            android:label="@string/title_xlsx_viewer">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" android:mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="file" android:mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".filemanager.CodeEditorActivity"
+            android:exported="false"
+            android:label="@string/title_code_editor"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- Redirect activity cho OAuth2 (Box / Dropbox) qua AppAuth. Scheme phải khớp
+             tuyệt đối với redirectUri khai báo trong OAuthManager.kt và với "Redirect URI"
+             đăng ký trên Dropbox App Console + Box Developer Console. -->
+        <activity
+            android:name="net.openid.appauth.RedirectUriReceiverActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.learnsypro.app" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".filemanager.server.FtpServerService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- HTTP server phát file qua LAN cho TV/điện thoại khác (mở link bằng trình duyệt/VLC),
+             và làm nguồn để DLNA cast trỏ TV về lấy dữ liệu. -->
+        <service
+            android:name=".filemanager.server.MediaCastService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- Player audio chạy nền kiểu VLC: tắt màn hình vẫn phát, có notification điều khiển. -->
+        <service
+            android:name=".filemanager.media.AudioPlaybackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
+
+        <!-- Vai trò UPnP MediaRenderer: máy chủ HTTP/SOAP (AVTransport + RenderingControl) +
+             SSDP để thiết bị khác (BubbleUPnP, TV, điện thoại khác) "Phát tới" Learnsy Pro. -->
+        <service
+            android:name=".filemanager.dlna.RendererCastService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <!-- ExoPlayer thực sự phát media nhận được qua RendererCastService, chạy nền kiểu VLC. -->
+        <service
+            android:name=".filemanager.dlna.RendererPlaybackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+    </application>
+
+</manifest>

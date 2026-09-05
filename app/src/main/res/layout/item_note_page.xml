@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 1 trang ghi chú — FrameLayout chồng NotePaperView (nền kẻ dòng/caro) dưới EditText nội dung
+     (nền trong suốt) để chữ đè lên đúng trên các đường kẻ. Inflate động nhiều lần trong
+     NoteEditorActivity (mỗi lần "+ Thêm trang"), xếp dọc trong pages_container. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/page_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <com.learnsypro.app.filemanager.notes.NotePaperView
+        android:id="@+id/note_paper"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <EditText
+        android:id="@+id/et_page_content"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:background="@null"
+        android:gravity="top|start"
+        android:hint="@string/notes_content_hint"
+        android:textColor="@color/text_primary"
+        android:textColorHint="@color/text_hint"
+        android:textSize="16sp"
+        android:lineSpacingExtra="6dp"
+        android:inputType="textCapSentences|textMultiLine"
+        android:minHeight="300dp" />
+
+</FrameLayout>

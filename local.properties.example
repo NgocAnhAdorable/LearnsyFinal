@@ -1,0 +1,18 @@
+# Copy file này thành "local.properties" (không có .example) và điền giá trị thật.
+# File local.properties đã được .gitignore chặn — KHÔNG BAO GIỜ commit lên GitHub.
+
+sdk.dir=/path/to/your/Android/sdk
+
+SUPA_URL=https://xxxxx.supabase.co
+SUPA_KEY=your-anon-key-here
+
+# Module Admin (trước đây là app Learnsy Standard Admin độc lập) — header
+# x-admin-secret khi gọi Edge Function student-set-password.
+ADMIN_API_KEY=your-admin-api-key-here
+
+UPSTASH_URL=https://xxxxx.upstash.io
+UPSTASH_TOKEN=your-upstash-rest-token-here
+
+DROPBOX_APP_KEY=your-dropbox-app-key-here
+BOX_CLIENT_ID=your-box-client-id-here
+BOX_CLIENT_SECRET=your-box-client-secret-here

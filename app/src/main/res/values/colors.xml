@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Nền -->
+    <color name="background">#FFFFFF</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface_alt">#FFF5FA</color>
+    <color name="white">#FFFFFF</color>
+
+    <!-- Hồng pastel - màu chủ đạo (đồng bộ với DashboardColorsLight.accent #F472B6 của
+         Learnsy Pro — trước đây là "pastel_blue", đổi tông nhưng GIỮ NGUYÊN tên biến để
+         mọi layout/style tham chiếu @color/primary, @color/pastel_blue_500... không cần sửa. -->
+    <color name="pastel_blue_50">#FFF0F7</color>
+    <color name="pastel_blue_100">#FEE1EF</color>
+    <color name="pastel_blue_200">#FDC3E0</color>
+    <color name="pastel_blue_300">#FBA5CF</color>
+    <color name="pastel_blue_400">#F787BE</color>
+    <color name="pastel_blue_500">#F472B6</color>
+    <color name="pastel_blue_600">#E85499</color>
+    <color name="pastel_blue_700">#D13F80</color>
+
+    <color name="primary">@color/pastel_blue_500</color>
+    <color name="primary_dark">@color/pastel_blue_700</color>
+    <color name="primary_light">@color/pastel_blue_200</color>
+    <color name="on_primary">#FFFFFF</color>
+
+    <color name="outline">@color/pastel_blue_300</color>
+    <color name="outline_variant">@color/pastel_blue_100</color>
+    <color name="outline_strong">@color/pastel_blue_400</color>
+
+    <!-- Trạng thái -->
+    <color name="success">#7FD9A8</color>
+    <color name="warning">#F7C97F</color>
+    <color name="error">#F29999</color>
+    <color name="info">@color/pastel_blue_400</color>
+
+    <!-- Text -->
+    <color name="text_primary">#2D1420</color>
+    <color name="text_secondary">#A06080</color>
+    <color name="text_hint">#C08099</color>
+    <color name="text_on_primary">#FFFFFF</color>
+
+    <!-- Cloud brand accents (nhẹ, chỉ để phân biệt icon) -->
+    <color name="brand_gdrive">#F472B6</color>
+    <color name="brand_dropbox">#F472B6</color>
+    <color name="brand_box">#F472B6</color>
+
+    <!-- Màu chấm thể loại kiểu Samsung My Files — giữ nguyên các màu rực rỡ riêng biệt cho
+         từng loại file (ảnh/video/âm thanh/tài liệu...) để dễ phân biệt bằng mắt; KHÔNG đổi
+         hết sang tông hồng vì sẽ mất khả năng phân biệt các thể loại trên biểu đồ/danh sách. -->
+    <color name="category_photo">#F06292</color>
+    <color name="category_video">#A855F7</color>
+    <color name="category_audio">#8C6BF2</color>
+    <color name="category_doc">#F2A65A</color>
+    <color name="category_download">#F472B6</color>
+    <color name="category_apk">#66D19E</color>
+    <color name="category_archive">#3DBE9A</color>
+    <color name="category_other">#C084FC</color>
+    <color name="category_trash">#9AA5B1</color>
+    <!-- category_apps/category_system: TÁCH RIÊNG khỏi category_download/category_other,
+         cùng lý do đã ghi chú ở bản gốc (2 màu quá giống nhau khiến "Ứng dụng"+"Hệ thống"+
+         "File khác" - vốn chiếm gần hết dung lượng - nhìn như 1 màu đơn sắc). -->
+    <color name="category_apps">#26C6DA</color>
+    <color name="category_system">#8D6E63</color>
+    <color name="storage_track_bg">#3A3F47</color>
+
+    <!-- Nền phụ / card kiểu hệ thống -->
+    <color name="card_surface">#FFF5FA</color>
+    <color name="divider">#F5E5ED</color>
+    <!-- Màu phần dung lượng CHƯA DÙNG trong SegmentedStorageBar — đổi từ hồng nhạt sang
+         xám nhạt trung tính để phân biệt rõ với các đoạn màu (đã dùng) và không bị nhầm
+         là 1 danh mục dữ liệu nào đó. -->
+    <color name="storage_bar_track">#E4E7EB</color>
+    <color name="icon_default">#2D1420</color>
+
+    <!-- Pill dung lượng ở màn Home: đồng nhất 1 màu cho cả Bộ nhớ trong lẫn Thẻ nhớ SD. -->
+    <color name="storage_pill_internal">@color/pastel_blue_500</color>
+    <color name="storage_pill_sd">@color/pastel_blue_500</color>
+    <color name="storage_pill_text">#FFFFFF</color>
+</resources>

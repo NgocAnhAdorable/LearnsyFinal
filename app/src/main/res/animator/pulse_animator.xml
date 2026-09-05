@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hiệu ứng nhấp nháy (pulse) lặp vô hạn cho ivServerIcon khi server FTP đang chạy —
+     xem updateServerPulse() trong ServerFragment.kt. -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:ordering="together">
+    <objectAnimator
+        android:propertyName="scaleX"
+        android:valueFrom="1.0"
+        android:valueTo="1.12"
+        android:valueType="floatType"
+        android:duration="700"
+        android:repeatCount="infinite"
+        android:repeatMode="reverse"
+        android:interpolator="@android:interpolator/fast_out_slow_in" />
+    <objectAnimator
+        android:propertyName="scaleY"
+        android:valueFrom="1.0"
+        android:valueTo="1.12"
+        android:valueType="floatType"
+        android:duration="700"
+        android:repeatCount="infinite"
+        android:repeatMode="reverse"
+        android:interpolator="@android:interpolator/fast_out_slow_in" />
+</set>

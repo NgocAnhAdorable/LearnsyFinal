@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Nền tối — đồng bộ với DashboardColorsDark của Learnsy Pro (nền #140609 ấm, không phải
+         đen thuần) thay vì đen/xám trung tính kiểu Samsung One UI gốc. -->
+    <color name="background">#140609</color>
+    <color name="surface">#1C0D12</color>
+    <color name="surface_alt">#24121A</color>
+
+    <!-- Hồng/tím pastel giữ nguyên tông sáng của bản gốc, đổi hue sang hồng (khớp
+         DashboardColorsDark.accent #F472B6) thay vì xanh dương. -->
+    <color name="pastel_blue_50">#2E1420</color>
+    <color name="pastel_blue_100">#3D1C2A</color>
+    <color name="pastel_blue_200">#682745</color>
+    <color name="pastel_blue_300">#9E3A6A</color>
+    <color name="pastel_blue_400">#EE5FA0</color>
+    <color name="pastel_blue_500">#F472B6</color>
+    <color name="pastel_blue_600">#F57FBB</color>
+    <color name="pastel_blue_700">#F79AC9</color>
+
+    <color name="primary">@color/pastel_blue_500</color>
+    <color name="primary_dark">@color/pastel_blue_700</color>
+    <color name="primary_light">@color/pastel_blue_200</color>
+    <color name="on_primary">#1F0B14</color>
+
+    <color name="outline">#78304E</color>
+    <color name="outline_variant">#522138</color>
+    <color name="outline_strong">#AD5C82</color>
+
+    <!-- Trạng thái -->
+    <color name="success">#5FCB90</color>
+    <color name="warning">#F0B95F</color>
+    <color name="error">#F27878</color>
+    <color name="info">@color/pastel_blue_400</color>
+
+    <!-- Text (khớp DashboardColorsDark: fg #FCE4F0, sub #FFC8DC~62%) -->
+    <color name="text_primary">#FCE4F0</color>
+    <color name="text_secondary">#C89AAF</color>
+    <color name="text_hint">#8F6376</color>
+    <color name="text_on_primary">#1F0B14</color>
+
+    <!-- Cloud brand accents -->
+    <color name="brand_gdrive">#EE5FA0</color>
+    <color name="brand_dropbox">#EE5FA0</color>
+    <color name="brand_box">#EE5FA0</color>
+
+    <!-- Màu chấm thể loại kiểu Samsung My Files -->
+    <color name="category_photo">#F06292</color>
+    <color name="category_video">#C084FC</color>
+    <color name="category_audio">#9B8CFA</color>
+    <color name="category_doc">#F2B677</color>
+    <color name="category_download">#F472B6</color>
+    <color name="category_apk">#7EE0AE</color>
+
+    <!-- Nền phụ / card kiểu hệ thống -->
+    <color name="card_surface">#1C0D12</color>
+    <color name="divider">#331922</color>
+    <color name="storage_bar_track">#331922</color>
+    <color name="icon_default">#FCE4F0</color>
+</resources>
