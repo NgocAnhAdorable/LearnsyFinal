@@ -46,8 +46,20 @@ import coil.memory.MemoryCache
  */
 class LearnsyApp : Application(), ImageLoaderFactory {
 
+    companion object {
+        // Instance tĩnh của Application context — dùng cho các nơi cần
+        // ConnectivityManager mà không có sẵn Activity/Context trong tay, ví dụ
+        // FtpClientManager (chạy trên Dispatchers.IO, không nhận Context qua
+        // constructor để giữ nguyên interface RemoteClient chung cho FTP/SFTP/
+        // SMB). An toàn dùng static ở đây vì luôn là applicationContext (sống
+        // suốt vòng đời tiến trình), không phải Activity context (sẽ leak).
+        lateinit var instance: LearnsyApp
+            private set
+    }
+
     override fun onCreate() {
         super.onCreate()
+        instance = this
 
         com.learnsypro.app.filemanager.util.LogBus.init(this)
 
