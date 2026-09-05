@@ -136,7 +136,7 @@ fun AvatarUploader(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(96.dp)
+                .height(170.dp)
                 .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
                 .background(
                     if (displayCoverUrl.isNullOrBlank()) {
