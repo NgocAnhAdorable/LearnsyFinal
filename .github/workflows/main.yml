@@ -1,0 +1,84 @@
+name: Build APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      # Gradle CLI dùng để sinh gradlew (project chưa có sẵn wrapper)
+      - name: Install Gradle CLI
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '9.1.0'
+
+      - name: Generate Gradle wrapper
+        run: gradle wrapper --gradle-version 9.1.0
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-
+
+      # Giải mã keystore release thật từ Secret (base64) ra file .jks để ký APK.
+      - name: Decode release keystore
+        run: echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > app/learnsy.jks
+
+      - name: Write local.properties
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          echo "SUPA_URL=${{ secrets.SUPA_URL }}" >> local.properties
+          echo "SUPA_KEY=${{ secrets.SUPA_KEY }}" >> local.properties
+          echo "ADMIN_API_KEY=${{ secrets.ADMIN_API_KEY }}" >> local.properties
+          echo "UPSTASH_URL=${{ secrets.UPSTASH_URL }}" >> local.properties
+          echo "UPSTASH_TOKEN=${{ secrets.UPSTASH_TOKEN }}" >> local.properties
+          echo "DROPBOX_APP_KEY=${{ secrets.DROPBOX_APP_KEY }}" >> local.properties
+          echo "BOX_CLIENT_ID=${{ secrets.BOX_CLIENT_ID }}" >> local.properties
+          echo "BOX_CLIENT_SECRET=${{ secrets.BOX_CLIENT_SECRET }}" >> local.properties
+          echo "RELEASE_STORE_FILE=learnsy.jks" >> local.properties
+          echo "RELEASE_STORE_PASSWORD=${{ secrets.RELEASE_STORE_PASSWORD }}" >> local.properties
+          echo "RELEASE_KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }}" >> local.properties
+          echo "RELEASE_KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD }}" >> local.properties
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      # ── Release APK (ký bằng learnsy.jks thật, không còn dùng debug keystore) ──
+      # Cần đủ 4 Secrets: RELEASE_KEYSTORE_BASE64, RELEASE_STORE_PASSWORD,
+      # RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD. Nếu thiếu bất kỳ Secret nào,
+      # app/build.gradle.kts sẽ tự rớt về signingConfigs["debug"] (xem khối
+      # `signingConfig = if (...) release else debug`) — build vẫn chạy được
+      # nhưng APK ký bằng debug keystore, không dùng để phát hành hoặc cập
+      # nhật app đã đăng ký bằng learnsy.jks (cài đè sẽ báo lỗi "signatures
+      # do not match").
+      - name: Build release APK
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Clean up keystore file
+        if: always()
+        run: rm -f app/learnsy.jks
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: learnsy-release-apk
+          path: app/build/outputs/apk/release/app-release*.apk
