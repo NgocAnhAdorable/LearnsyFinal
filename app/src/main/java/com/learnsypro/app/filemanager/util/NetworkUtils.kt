@@ -54,24 +54,25 @@ object NetworkUtils {
 
     /**
      * Lấy Network object của Wi-Fi/Ethernet ĐÃ SẴN SÀNG (validated) — dùng để ép
-     * socket FTP đi ra đúng mạng LAN này, thay vì để hệ thống tự chọn (có thể
-     * chọn nhầm mạng di động khi cả 2 cùng bật, khiến kết nối tới IP nội bộ như
-     * 192.168.x.x bị timeout im lặng dù Wi-Fi thực sự đang kết nối tốt).
+     * socket FTP đi ra đúng mạng LAN này. Trả về cặp (network, cleanup) — cleanup
+     * PHẢI được gọi khi phiên FTP kết thúc (disconnect) để gỡ NetworkCallback.
      *
-     * ĐỔI SANG requestNetwork() + NetworkCallback thay vì duyệt cm.allNetworks()
-     * (cách cũ): allNetworks() trả về TOÀN BỘ network hệ thống đang giữ tham
-     * chiếu, kể cả network vừa mất kết nối/đang chuyển kênh/chưa hoàn tất xác
-     * thực (NAT/DHCP) — bindSocket() vào 1 network như vậy vẫn "thành công" ở
-     * tầng API (không exception) nhưng socket thực tế không gửi được gói tin
-     * nào, gây timeout dù đứng ngay cạnh router. requestNetwork() buộc hệ thống
-     * PHẢI xác nhận network qua onAvailable() trước khi trả về — network nhận
-     * được ở đây chắc chắn đã kết nối xong, không phải suy đoán từ danh sách.
-     *
-     * Chạy trên coroutine, có timeout riêng (2s) để không cộng dồn vào timeout
-     * 8s của ftp.connect() phía sau — nếu quá hạn hoặc lỗi, trả về null và nơi
-     * gọi tự fallback về hành vi cũ (không ép network).
+     * QUAN TRỌNG — đây là bug đã sửa so với bản trước: unregisterNetworkCallback()
+     * NGAY sau onAvailable() (như bản cũ) làm hệ thống mất lý do giữ network đó ở
+     * mức ưu tiên cao, khiến Network object trả về tuy vẫn tồn tại về mặt tham
+     * chiếu Kotlin nhưng KHÔNG còn đảm bảo định tuyến đúng khi socket thực sự kết
+     * nối vài trăm ms sau đó — Android có thể âm thầm coi network đó là "không
+     * còn ai cần", dẫn tới bindSocket() gắn vào 1 network đã bị hạ cấp, timeout
+     * xảy ra KHÔNG ĐỀU tuỳ thời điểm hệ thống dọn dẹp — đúng triệu chứng đã gặp
+     * (lúc được lúc không, không liên quan độ mạnh Wi-Fi hay khoảng cách router).
+     * Giữ callback đăng ký (không unregister) suốt vòng đời phiên FTP đảm bảo
+     * network luôn được hệ thống coi là "đang cần dùng", ổn định tới khi cleanup.
      */
-    suspend fun getActiveWifiNetwork(context: Context): android.net.Network? =
+    class WifiNetworkHandle(val network: android.net.Network?, private val cleanup: () -> Unit) {
+        fun release() = cleanup()
+    }
+
+    suspend fun acquireActiveWifiNetwork(context: Context): WifiNetworkHandle =
         kotlinx.coroutines.suspendCancellableCoroutine { cont ->
             val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
             val request = android.net.NetworkRequest.Builder()
@@ -84,21 +85,23 @@ object NetworkUtils {
                 override fun onAvailable(network: android.net.Network) {
                     if (resumed) return
                     resumed = true
-                    cont.resume(network) {
-                        // Coroutine bị hủy trước khi resume kịp — không cần cleanup gì thêm ở đây,
-                        // unregisterCallback() bên dưới trong invokeOnCancellation đã lo việc đó.
-                    }
-                    try {
-                        cm.unregisterNetworkCallback(this)
-                    } catch (e: Exception) {
-                        // Callback có thể đã tự bị gỡ nếu request hết hạn đúng lúc — bỏ qua an toàn.
-                    }
+                    // KHÔNG unregister ở đây — callback phải sống tới khi FTP disconnect()
+                    // gọi release(), giữ network ở mức ưu tiên cao suốt phiên làm việc.
+                    cont.resume(
+                        WifiNetworkHandle(network) {
+                            try {
+                                cm.unregisterNetworkCallback(this)
+                            } catch (e: Exception) {
+                                // Đã unregister rồi (vd gọi release() 2 lần) — bỏ qua an toàn.
+                            }
+                        }
+                    ) {}
                 }
 
                 override fun onUnavailable() {
                     if (resumed) return
                     resumed = true
-                    cont.resume(null) {}
+                    cont.resume(WifiNetworkHandle(null) {}) {}
                 }
             }
 
@@ -106,18 +109,16 @@ object NetworkUtils {
                 try {
                     cm.unregisterNetworkCallback(callback)
                 } catch (e: Exception) {
-                    // Đã unregister rồi hoặc request không còn hiệu lực — bỏ qua an toàn.
+                    // Request có thể chưa từng thành công đăng ký — bỏ qua an toàn.
                 }
             }
 
             try {
-                // requestNetwork(request, callback, timeoutMs) — tự gọi onUnavailable() nếu
-                // không tìm được network hợp lệ trong 2000ms, không cần tự đặt Handler/Timer.
-                cm.requestNetwork(request, callback, 2000)
+                cm.requestNetwork(request, callback, 4000)
             } catch (e: Exception) {
                 if (!resumed) {
                     resumed = true
-                    cont.resume(null) {}
+                    cont.resume(WifiNetworkHandle(null) {}) {}
                 }
             }
         }
