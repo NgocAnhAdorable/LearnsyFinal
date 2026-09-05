@@ -26,6 +26,46 @@ class FtpClientManager : RemoteClient {
     override suspend fun connect(profile: FtpConnectionProfile): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val ftp = FTPClient()
+
+            // Ép TOÀN BỘ socket của FTPClient (control channel VÀ data channel PASV/
+            // Active sau này) đi ra đúng mạng Wi-Fi/Ethernet đang kết nối, thay vì để
+            // hệ thống tự chọn network. Bắt buộc phải làm bước này khi máy vừa bật
+            // Wi-Fi vừa bật dữ liệu di động: Android có thể tự route traffic tới IP
+            // LAN (192.168.x.x) qua network sai (di động), khiến kết nối tới máy chủ
+            // FTP trong cùng mạng LAN bị timeout dù Wi-Fi đang hoạt động bình thường
+            // — đúng triệu chứng "failed to connect ... after 8000ms" đã gặp, dù
+            // server thực sự đang chạy và các app khác (My Files...) vẫn kết nối
+            // được (các app đó tự bind network đúng cách qua ConnectivityManager).
+            // Dùng custom SocketFactory thay vì chỉ bindProcessToNetwork() toàn cục
+            // — tránh ảnh hưởng các kết nối khác của app (Supabase...) đang chạy
+            // song song trên network khác nếu có.
+            val wifiNetwork = try {
+                com.learnsypro.app.filemanager.util.NetworkUtils.getActiveWifiNetwork(
+                    com.learnsypro.app.LearnsyApp.instance
+                )
+            } catch (e: Exception) {
+                null // LearnsyApp.instance chưa sẵn sàng hoặc lỗi lấy network — fallback bên dưới
+            }
+            if (wifiNetwork != null) {
+                ftp.setSocketFactory(object : javax.net.SocketFactory() {
+                    override fun createSocket(): java.net.Socket =
+                        java.net.Socket().also { wifiNetwork.bindSocket(it) }
+                    override fun createSocket(host: String?, port: Int): java.net.Socket =
+                        createSocket().apply { connect(java.net.InetSocketAddress(host, port)) }
+                    override fun createSocket(host: String?, port: Int, localHost: java.net.InetAddress?, localPort: Int): java.net.Socket =
+                        createSocket().apply {
+                            bind(java.net.InetSocketAddress(localHost, localPort))
+                            connect(java.net.InetSocketAddress(host, port))
+                        }
+                    override fun createSocket(host: java.net.InetAddress?, port: Int): java.net.Socket =
+                        createSocket().apply { connect(java.net.InetSocketAddress(host, port)) }
+                    override fun createSocket(address: java.net.InetAddress?, port: Int, localAddress: java.net.InetAddress?, localPort: Int): java.net.Socket =
+                        createSocket().apply {
+                            bind(java.net.InetSocketAddress(localAddress, localPort))
+                            connect(java.net.InetSocketAddress(address, port))
+                        }
+                })
+            }
             // Ép control channel dùng UTF-8: mặc định Commons Net FTPClient dùng ISO-8859-1 để
             // decode/encode toàn bộ control channel (bao gồm tên file/thư mục trả về từ LIST),
             // trong khi hầu hết router/NAS hiện đại gửi tên file bằng UTF-8 thẳng (không hỗ trợ
