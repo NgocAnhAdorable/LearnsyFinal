@@ -19,6 +19,10 @@ import java.io.OutputStream
 class FtpClientManager : RemoteClient {
 
     private var client: FTPClient? = null
+    // Giữ handle network Wi-Fi sống suốt phiên FTP — release() chỉ gọi ở
+    // disconnect(), KHÔNG gọi ngay sau khi lấy được network (xem giải thích
+    // trong NetworkUtils.acquireActiveWifiNetwork — đây là bug đã sửa).
+    private var wifiNetworkHandle: com.learnsypro.app.filemanager.util.NetworkUtils.WifiNetworkHandle? = null
 
     override val isConnected: Boolean
         get() = client?.isConnected == true
@@ -32,20 +36,19 @@ class FtpClientManager : RemoteClient {
             // hệ thống tự chọn network. Bắt buộc phải làm bước này khi máy vừa bật
             // Wi-Fi vừa bật dữ liệu di động: Android có thể tự route traffic tới IP
             // LAN (192.168.x.x) qua network sai (di động), khiến kết nối tới máy chủ
-            // FTP trong cùng mạng LAN bị timeout dù Wi-Fi đang hoạt động bình thường
-            // — đúng triệu chứng "failed to connect ... after 8000ms" đã gặp, dù
-            // server thực sự đang chạy và các app khác (My Files...) vẫn kết nối
-            // được (các app đó tự bind network đúng cách qua ConnectivityManager).
-            // Dùng custom SocketFactory thay vì chỉ bindProcessToNetwork() toàn cục
-            // — tránh ảnh hưởng các kết nối khác của app (Supabase...) đang chạy
-            // song song trên network khác nếu có.
-            val wifiNetwork = try {
-                com.learnsypro.app.filemanager.util.NetworkUtils.getActiveWifiNetwork(
+            // FTP trong cùng mạng LAN bị timeout dù Wi-Fi đang hoạt động bình thường.
+            //
+            // handle được GIỮ LẠI trong field wifiNetworkHandle (không release ngay) —
+            // NetworkCallback phải còn đăng ký suốt phiên FTP để hệ thống không hạ cấp
+            // network giữa chừng, xem chi tiết trong NetworkUtils.kt.
+            wifiNetworkHandle = try {
+                com.learnsypro.app.filemanager.util.NetworkUtils.acquireActiveWifiNetwork(
                     com.learnsypro.app.LearnsyApp.instance
                 )
             } catch (e: Exception) {
                 null // LearnsyApp.instance chưa sẵn sàng hoặc lỗi lấy network — fallback bên dưới
             }
+            val wifiNetwork = wifiNetworkHandle?.network
             if (wifiNetwork != null) {
                 ftp.setSocketFactory(object : javax.net.SocketFactory() {
                     override fun createSocket(): java.net.Socket =
@@ -65,6 +68,12 @@ class FtpClientManager : RemoteClient {
                             connect(java.net.InetSocketAddress(address, port))
                         }
                 })
+            } else {
+                // Không lấy được network Wi-Fi xác nhận (timeout 4s hoặc lỗi) — giải phóng
+                // callback rác nếu có, rồi để FTPClient tự chọn socket mặc định của hệ thống
+                // (hành vi gốc trước khi có patch bind network).
+                wifiNetworkHandle?.release()
+                wifiNetworkHandle = null
             }
             // Ép control channel dùng UTF-8: mặc định Commons Net FTPClient dùng ISO-8859-1 để
             // decode/encode toàn bộ control channel (bao gồm tên file/thư mục trả về từ LIST),
@@ -162,6 +171,10 @@ class FtpClientManager : RemoteClient {
             Result.success(Unit)
         } catch (e: Exception) {
             LogBus.error("Kết nối FTP tới ${profile.host}:${profile.port} thất bại", source = "FTP", throwable = e)
+            // Connect thất bại — không giữ callback network sống vô ích, tránh leak
+            // NetworkRequest treo tới khi app bị kill/GC.
+            wifiNetworkHandle?.release()
+            wifiNetworkHandle = null
             Result.failure(e)
         }
     }
@@ -174,6 +187,8 @@ class FtpClientManager : RemoteClient {
             // ignore
         } finally {
             client = null
+            wifiNetworkHandle?.release()
+            wifiNetworkHandle = null
         }
         Unit
     }
